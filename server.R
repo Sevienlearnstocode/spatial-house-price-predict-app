@@ -392,7 +392,7 @@ shinyServer(function(input, output, session){
     }
     else if (input$dropdown_attractions == "Danau/Embung/Waduk") {
       
-      # Filter gdf_sungai based on selected kecamatan and polygons in average_harga_per_kecamatan
+      # Filter gdf_danau_embu based on selected kecamatan and polygons in average_harga_per_kecamatan
       selected_kecamatan <- input$dropdown_kecamatan
       selected_data <- average_harga_per_kecamatan %>%
         filter(tolower(kecamatan) == tolower(selected_kecamatan))
