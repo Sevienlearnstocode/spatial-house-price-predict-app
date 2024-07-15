@@ -3,8 +3,7 @@ Welcome to the Spatial House Price Prediction App repository! This ShinyR applic
 ![image](https://github.com/user-attachments/assets/dc29ab58-a929-4211-9645-8b26bdc01cd8)
 
 ## Model Comparison
-
-| Model | R-Squared | AIC  | BIC  |
-|-------|-----------|------|------|
-| SAR   | 0.75      | 1400 | 1430 |
-| SEM   | 0.78      | 1380 | 1410 |
+| Model | R-Squared |    AIC   |    BIC   |
+|-------|-----------|----------|----------|
+| SAR   | 0.6523803 | 3978.974 | 4087.159 |
+| SEM   | 0.7048    | 3748.284 | 3856.469 |
