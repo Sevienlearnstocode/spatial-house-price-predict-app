@@ -3,6 +3,7 @@ Welcome to the Spatial House Price Prediction App repository! This ShinyR applic
 ![image](https://github.com/user-attachments/assets/dc29ab58-a929-4211-9645-8b26bdc01cd8)
 
 ## Model Comparison
+The table below compares the performance metrics of Spatial Autoregressive (SAR) and Spatial Error (SEM) models, specifically focusing on R-Squared, AIC, and BIC values.
 | Model | R-Squared |    AIC   |    BIC   |
 |-------|-----------|----------|----------|
 | SAR   | 0.6523803 | 3978.974 | 4087.159 |
