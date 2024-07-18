@@ -10,7 +10,8 @@
 # install.packages ("purrr")
 # install.packages("markdown")
 # install.packages("readxl")
-
+# install.packages("DBI")
+# install.packages("RSQLite")
 
 library(spData)
 library(shiny)
@@ -23,6 +24,8 @@ library(spatialreg)
 library(leaflet)
 library(purrr)
 library(readxl)
+library(DBI)
+library(RSQLite)
 
 sem_model <- readRDS("sem_model11.rds")
 
@@ -121,20 +124,37 @@ sd_train <- apply(real_values, 2, sd)
 mean_y <- mean(dataset_rumah$harga)
 sd_y <- sd(dataset_rumah$harga)
 
+# Connect to the SQLite database (create if it doesn't exist)
+con <- dbConnect(RSQLite::SQLite(), "predictions.sqlite")
+
+# Create table predictions
+dbExecute(con, "
+CREATE TABLE IF NOT EXISTS predictions (
+  Luas_Tanah REAL,
+  Luas_Gedung REAL,
+  Daya_Listrik REAL,
+  Banyak_Kamar_Tidur REAL,
+  Banyak_Toilet REAL,
+  Lebar_Jalan REAL,
+  Kecamatan TEXT,
+  Predicted_Price REAL
+)")
+
+
 shinyServer(function(input, output, session){
   
-  # Read data from DB.csv
+  # Read data from SQLite table predictions to db_data
   db_data <- reactive({
-    read.csv("DB.csv", stringsAsFactors = FALSE) %>%
+    dbGetQuery(con, "SELECT * FROM predictions") %>%
       rename(
-        "Luas Tanah" = "x1",
-        "Luas Gedung" = "x2",
-        "Daya Listrik" = "x3",
-        "Banyak Kamar Tidur" = "x5",
-        "Banyak Toilet" = "x6",
-        "Lebar Jalan" = "x4",
-        "Kecamatan" = "selected_kecamatan",
-        "Predicted Price" = "predicted_value"
+        "Luas Tanah" = "Luas_Tanah",
+        "Luas Gedung" = "Luas_Gedung",
+        "Daya Listrik" = "Daya_Listrik",
+        "Banyak Kamar Tidur" = "Banyak_Kamar_Tidur",
+        "Banyak Toilet" = "Banyak_Toilet",
+        "Lebar Jalan" = "Lebar_Jalan",
+        "Kecamatan" = "Kecamatan",
+        "Predicted Price" = "Predicted_Price"
       ) %>%
       mutate(`Predicted Price` = paste0("Rp ", comma(`Predicted Price`)))
   })
@@ -753,7 +773,7 @@ shinyServer(function(input, output, session){
       x6 = as.numeric(input$banyak_toilet),
       x4 = as.numeric(input$lebar_jalan)
     )
-    
+
     # Check for NA values and replace them with 0
     input_values[is.na(input_values)] <- 0
     
@@ -770,6 +790,8 @@ shinyServer(function(input, output, session){
       x17 = as.numeric(filtered_data$pemerintah)
     )
     
+    
+    
     # Check for NA values and replace them with 0
     filtered_data_values[is.na(filtered_data_values)] <- 0
     
@@ -778,14 +800,14 @@ shinyServer(function(input, output, session){
     
     # Ensure combined_data has the correct number of rows and columns
     combined_data <- combined_data[1, , drop = FALSE]
-    
+
     # Convert lag_features to a dataframe
     combined_data_df <- as.data.frame(combined_data, stringsAsFactors = FALSE)
     
     # Standardize the real data
     real_input <- as.matrix(combined_data_df)
     standardized_input <- (real_input - mean_train) / sd_train
-
+    
     # Multiply each element in coef_matrix with each column in combined_data_df
     spatial_error <- as.numeric(sem_model$lambda) * sum(as.matrix(sem_model$weights) * residuals(sem_model))
     result <- pmax((sum(coef(sem_model)[colnames(standardized_input)] * standardized_input)+spatial_error),-0.35)
@@ -793,38 +815,45 @@ shinyServer(function(input, output, session){
     # Sum the resulting values
     predicted_value <- result * sd_y + mean_y
     
-    # Save data to DB
-    # Read the existing CSV file "DB.csv"
-    existing_data <- read.csv("DB.csv", stringsAsFactors = FALSE)
+    # Save data to SQLite database
+    new_data <- data.frame(
+      Luas_Tanah = input_values$x1,
+      Luas_Gedung = input_values$x2,
+      Daya_Listrik = input_values$x3,
+      Banyak_Kamar_Tidur = input_values$x5,
+      Banyak_Toilet = input_values$x6,
+      Lebar_Jalan = input_values$x4,
+      Kecamatan = selected_kecamatan,
+      Predicted_Price = predicted_value
+    )
     
-    updated_data <- rbind(existing_data, cbind(input_values,cbind(selected_kecamatan, predicted_value)))
-    
-    write.csv(updated_data, "DB.csv", row.names = FALSE)
+    dbWriteTable(con, "predictions", new_data, append = TRUE, row.names = FALSE)
     
     return(predicted_value)
   })
   
-  # Read data from DB.csv and render it in the History tab
+  # Read data from SQLite database and render it in the History tab
   output$history_table <- renderTable({
     db_data()
   })
   
-  # Event handler for the Download History button
+  # Download handler for history data
   output$download_history <- downloadHandler(
     filename = function() {
-      paste("history_data.csv", sep = ",")
+      paste("history-", Sys.Date(), ".csv", sep="")
     },
     content = function(file) {
-      write.csv(db_data(), file)
+      write.csv(db_data(), file, row.names = FALSE)
     }
   )
   
   # Event handler for the Delete History button
   observeEvent(input$clear_history, {
-    file.copy("DB1.csv", "DB.csv", overwrite = TRUE)  # Replace DB.csv with DB1.csv
-    session$reload()
+    dbExecute(con, "DELETE FROM predictions")
+    output$history_table <- renderTable({
+      db_data()
+    })
   })
-  
   
   # Status/Output Text Box
   output$calculation_result <- renderPrint({

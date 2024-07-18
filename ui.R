@@ -10,7 +10,8 @@
 # install.packages ("purrr")
 # install.packages("markdown")
 # install.packages("readxl")
-
+# install.packages("DBI")
+# install.packages("RSQLite")
 
 library(spData)
 library(shiny)
@@ -23,6 +24,8 @@ library(spatialreg)
 library(leaflet)
 library(purrr)
 library(readxl)
+library(DBI)
+library(RSQLite)
 
 sem_model <- readRDS("sem_model11.rds")
 
@@ -121,9 +124,21 @@ sd_train <- apply(real_values, 2, sd)
 mean_y <- mean(dataset_rumah$harga)
 sd_y <- sd(dataset_rumah$harga)
 
-###################################
-# User interface                  #
-###################################
+# Connect to the SQLite database (create if it doesn't exist)
+con <- dbConnect(RSQLite::SQLite(), "predictions.sqlite")
+
+# Create table predictions
+dbExecute(con, "
+CREATE TABLE IF NOT EXISTS predictions (
+  Luas_Tanah REAL,
+  Luas_Gedung REAL,
+  Daya_Listrik REAL,
+  Banyak_Kamar_Tidur REAL,
+  Banyak_Toilet REAL,
+  Lebar_Jalan REAL,
+  Kecamatan TEXT,
+  Predicted_Price REAL
+)")
 
 fluidPage(
   tags$head(
@@ -190,21 +205,6 @@ fluidPage(
                       )
              ),
              tabPanel("Analysis",
-                      
-                      # # Choose Model
-                      # sidebarPanel(
-                      #   HTML("<h3>Choose Model</h3>"),
-                      #   
-                      #   selectInput(
-                      #     "model",
-                      #     label = "Model:",
-                      #     choices = list("SAR" = "sar",
-                      #                    "SEM" = "sem"
-                      #     ),
-                      #     selected = "sar"
-                      #   ),
-                      #   
-                      # ),
                       
                       # Input values
                       sidebarPanel(

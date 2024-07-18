@@ -5,7 +5,7 @@
 
 my_packages = c("shiny", "shinythemes", "spData", "spdep", "scales", 
                 "dplyr", "rmarkdown", "markdown", "spatialreg",
-                "leaflet", "purrr", "readxl")
+                "leaflet", "purrr", "readxl", "DBI", "RSQLite")
 
 install_if_missing = function(p) {
   if (p %in% rownames(installed.packages()) == FALSE) {
